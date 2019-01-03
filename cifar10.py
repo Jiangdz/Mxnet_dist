@@ -32,25 +32,22 @@ from gluoncv.model_zoo import get_model
 
 import logging
 import os
+pid=os.getpid()
+print('process id: {}'.format(pid))
 
-logger=logging.getLogger()
-logger.setLevel(logging.DEBUG)
-DATEFMT ="[%Y-%m-%d %H:%M:%S]"
-FORMAT = "%(asctime)s %(thread)d %(message)s"
 def init_log(output_dir):
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(message)s',
                         datefmt='%Y%m%d-%H:%M:%S',
-                        filename=output_dir+'.log',
+                        filename='Log/'+output_dir+'.log',
                         filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     logging.getLogger('').addHandler(console)
     return logging
 
-logging = init_log('mxnet_test')
-_print = logging.info
-
+logger = init_log('cifar10'+str(pid))
+_print = logger.info
 
 # Create a distributed key-value store
 store = kv.create('dist') # Note: you can control the sync and async here (https://mxnet.incubator.apache.org/api/python/kvstore/kvstore.html)
@@ -77,9 +74,6 @@ ctx = [mx.gpu(i) for i in range(gpus_per_machine)] # Note: maybe you can configu
 # Dividing by 255 normalizes the input between 0 and 1
 def transform(data, label):
     return nd.transpose(data.astype(np.float32), (2,0,1))/255, label.astype(np.float32)
-
-
-
 
 transform_train = transforms.Compose([
     # Randomly crop an area, and then resize it to be 32x32
