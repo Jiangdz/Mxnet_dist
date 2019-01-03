@@ -30,6 +30,27 @@ import time
 
 from gluoncv.model_zoo import get_model
 
+import logging
+import os
+
+logger=logging.getLogger()
+logger.setLevel(logging.DEBUG)
+DATEFMT ="[%Y-%m-%d %H:%M:%S]"
+FORMAT = "%(asctime)s %(thread)d %(message)s"
+def init_log(output_dir):
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(message)s',
+                        datefmt='%Y%m%d-%H:%M:%S',
+                        filename=output_dir+'.log',
+                        filemode='w')
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logging.getLogger('').addHandler(console)
+    return logging
+
+logging = init_log('mxnet_test')
+_print = logging.info
+
 
 # Create a distributed key-value store
 store = kv.create('dist') # Note: you can control the sync and async here (https://mxnet.incubator.apache.org/api/python/kvstore/kvstore.html)
@@ -41,7 +62,7 @@ num_outputs = 10
 # 64 images in a batch
 batch_size_per_gpu = 256  
 # How many epochs to run the training
-epochs = 200
+epochs = 2
 
 # How many GPUs per machine
 gpus_per_machine = 1 # Note: Configure the GPU number
@@ -290,10 +311,12 @@ for epoch in range(epochs):
 
         batch_num += 1
     # test only in GPU 0 so we also show the train time 
-    print("Epoch %d: Train time %f" % (epoch, time.time()-last_time,))
+    # print("Epoch %d: Train time %f" % (epoch, time.time()-last_time,))
+    _print('Epoch {}: Train time {}'.format(epoch, time.time()-last_time))
     # Print test accuracy after every epoch
     test_accuracy = evaluate_accuracy(test_data, net)
-    print("Epoch %d: Test_acc %f Time_per %f Time_tatal %f" % (epoch, test_accuracy, time.time()-last_time, time.time()-start_time))
+    # print("Epoch %d: Test_acc %f Time_per %f Time_tatal %f" % (epoch, test_accuracy, time.time()-last_time, time.time()-start_time))
+    _print('Epoch {}: Test_acc {} Time_per {} Time_tatal {}'.format(epoch, test_accuracy, time.time()-last_time, time.time()-start_time))
     last_time = time.time()
     sys.stdout.flush()
 print("Finish")
