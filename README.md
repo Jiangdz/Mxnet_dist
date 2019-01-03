@@ -29,9 +29,13 @@ For example:
 ```
 
 ## Step 5
-Run command
+Run command: multi machine
 ```
-python incubator-mxnet/tools/launch.py -n 1 -s 1 -H host  --launcher ssh "export DMLC_PS_ROOT_URI=10.0.0.1 ;  python cifar10_dist.py"
+python incubator-mxnet/tools/launch.py -n 1 -s 1 -H host  --launcher ssh "python cifar10.py"
+```
+Run command: single machine
+```
+python cifar10_single.py
 ```
 
 
