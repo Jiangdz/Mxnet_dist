@@ -59,10 +59,10 @@ num_outputs = 10
 # 64 images in a batch
 batch_size_per_gpu = 256  
 # How many epochs to run the training
-epochs = 2
+epochs = 100
 
 # How many GPUs per machine
-gpus_per_machine = 1 # Note: Configure the GPU number
+gpus_per_machine = 8 # Note: Configure the GPU number
 # Effective batch size across all GPUs
 batch_size = batch_size_per_gpu * gpus_per_machine
 
@@ -161,7 +161,7 @@ elif model_name == "cnn":
 """
 
 # Note : choose the model here
-model_name = "resnet"
+model_name = "mlp"
 if model_name == "resnet":
     net_name = 'cifar_resnet110_v2'
     net = get_model(net_name, classes=10)
@@ -273,11 +273,11 @@ def train_batch(batch, ctx, net, trainer):
     #print("0000", time.time())
     # Split and load data into multiple GPUs
     data = batch[0]
-    data = gluon.utils.split_and_load(data, ctx)
+    data = gluon.utils.split_and_load(data, ctx,even_split=False)
 
     # Split and load label into multiple GPUs
     label = batch[1]
-    label = gluon.utils.split_and_load(label, ctx)
+    label = gluon.utils.split_and_load(label, ctx,even_split=False)
     #print(data)
     #print(label)
     # Run the forward and backward pass
