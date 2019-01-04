@@ -29,6 +29,7 @@ import numpy as np
 import time
 
 from gluoncv.model_zoo import get_model
+import argparse
 
 import logging
 import os
@@ -49,8 +50,22 @@ def init_log(output_dir):
 logger = init_log('cifar10'+str(pid))
 _print = logger.info
 
+
+parser=argparse.ArgumentParser(description='Cifar10')
+parser.add_argument('--dist',type=str,default='dist_sync_device',
+                    help='dist: dist_sync, dist_async, dist_sync_device, dist_async_device (default: dist_async_device)')
+parser.add_argument('--epochs',type=int,default=100,
+                    help='epochs (default: 100)')
+parser.add_argument('--gpus_per_machine',type=int, default=4,
+                    help='gpus_per_machine (default: 4)')
+parser.add_argument('--model_name', type=str, default='resnet',
+                    help='model_name:cnn, mlp, resnet (default: resnet)')
+parser.add_argument('--gpu_i', type=int, default=1,
+                    help='gpu_i:(default: 1)')
+opt = parser.parse_args()
+
 # Create a distributed key-value store
-store = kv.create('dist') # Note: you can control the sync and async here (https://mxnet.incubator.apache.org/api/python/kvstore/kvstore.html)
+store = kv.create(opt.dist) # Note: you can control the sync and async here (https://mxnet.incubator.apache.org/api/python/kvstore/kvstore.html)
 
 
 # Clasify the images into one of the 10 digits
@@ -59,15 +74,15 @@ num_outputs = 10
 # 64 images in a batch
 batch_size_per_gpu = 256  
 # How many epochs to run the training
-epochs = 100
+epochs = opt.epochs
 
 # How many GPUs per machine
-gpus_per_machine = 8 # Note: Configure the GPU number
+gpus_per_machine = opt.gpus_per_machine # Note: Configure the GPU number
 # Effective batch size across all GPUs
 batch_size = batch_size_per_gpu * gpus_per_machine
 
 # Create the context (a list of all GPUs to be used for training)
-ctx = [mx.gpu(i) for i in range(gpus_per_machine)] # Note: maybe you can configure gpu/cpu here, please check it
+ctx = [mx.gpu(i+opt.gpu_i) for i in range(gpus_per_machine)] # Note: maybe you can configure gpu/cpu here, please check it
 #ctx = mx.gpu(2)
 # Convert to float 32
 # Having channel as the first dimension makes computation more efficient. Hence the (2,0,1) transpose.
@@ -161,7 +176,7 @@ elif model_name == "cnn":
 """
 
 # Note : choose the model here
-model_name = "mlp"
+model_name = opt.model_name
 if model_name == "resnet":
     net_name = 'cifar_resnet110_v2'
     net = get_model(net_name, classes=10)
