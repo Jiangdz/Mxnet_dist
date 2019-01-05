@@ -40,16 +40,17 @@ def init_log(output_dir):
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(message)s',
                         datefmt='%Y%m%d-%H:%M:%S',
-                        filename='Log/'+output_dir+'.log',
+                        filename='Log_2/'+output_dir+'.log',
                         filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     logging.getLogger('').addHandler(console)
     return logging
 
-logger = init_log('cifar10'+str(pid))
+head=round(time.time(),0)
+head='cifar10_'+str(head)+'_'+str(pid)
+logger = init_log(head)
 _print = logger.info
-
 
 parser=argparse.ArgumentParser(description='Cifar10')
 parser.add_argument('--dist',type=str,default='dist_sync_device',
@@ -62,7 +63,12 @@ parser.add_argument('--model_name', type=str, default='resnet',
                     help='model_name:cnn, mlp, resnet (default: resnet)')
 parser.add_argument('--gpu_i', type=int, default=1,
                     help='gpu_i:(default: 1)')
+parser.add_argument('--cpu', type=int, default=0,
+                    help='cpu:(default: 0)')
 opt = parser.parse_args()
+
+_print('pid {}, dist {}, epochs {}, gpus_per_machine {}, model_name {}, gpu_i {}, cpu {}'.format(
+    str(pid),str(opt.dist), str(opt.epochs), str(opt.gpus_per_machine),str(opt.model_name),str(opt.gpu_i),str(opt.cpu)))
 
 # Create a distributed key-value store
 store = kv.create(opt.dist) # Note: you can control the sync and async here (https://mxnet.incubator.apache.org/api/python/kvstore/kvstore.html)
@@ -72,7 +78,7 @@ store = kv.create(opt.dist) # Note: you can control the sync and async here (htt
 num_outputs = 10
 
 # 64 images in a batch
-batch_size_per_gpu = 256  
+batch_size_per_gpu = 256
 # How many epochs to run the training
 epochs = opt.epochs
 
@@ -82,7 +88,10 @@ gpus_per_machine = opt.gpus_per_machine # Note: Configure the GPU number
 batch_size = batch_size_per_gpu * gpus_per_machine
 
 # Create the context (a list of all GPUs to be used for training)
-ctx = [mx.gpu(i+opt.gpu_i) for i in range(gpus_per_machine)] # Note: maybe you can configure gpu/cpu here, please check it
+if opt.cpu:
+    ctx = [mx.cpu(0)]  # Note: maybe you can configure gpu/cpu here, please check it
+else:
+    ctx = [mx.gpu(i+opt.gpu_i) for i in range(gpus_per_machine)] # Note: maybe you can configure gpu/cpu here, please check it
 #ctx = mx.gpu(2)
 # Convert to float 32
 # Having channel as the first dimension makes computation more efficient. Hence the (2,0,1) transpose.
