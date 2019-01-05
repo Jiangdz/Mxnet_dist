@@ -18,6 +18,31 @@ def read_model_result(path):
     time_total = []
     with open(path) as f:
         line = f.readline()
+        line = f.readline()
+        while line != '':
+            sp_line = line.split(' ')
+            epoch.append(int(sp_line[2][:-1]))
+            train_time.append(round(float(sp_line[5][:-1]), 2))
+            line = f.readline()
+            sp_line = line.split(' ')
+            timestamp.append(time.mktime(time.strptime(sp_line[0], "%Y%m%d-%H:%M:%S")))
+            test_acc.append(float(sp_line[4]))
+            time_per.append(round(float(sp_line[6]), 2))
+            time_total.append(round(float(sp_line[8][:-1]), 2))
+            line = f.readline()
+    model_result = pd.DataFrame({'timestamp': timestamp, 'epoch': epoch, 'train_time': train_time, 'test_acc': test_acc,
+                                 'time_per': time_per, 'time_total': time_total})
+    return model_result
+
+def read_model_result_1(path):
+    timestamp = []
+    epoch = []
+    train_time = []
+    test_acc = []
+    time_per = []
+    time_total = []
+    with open(path) as f:
+        line = f.readline()
         while line != '':
             sp_line = line.split(' ')
             epoch.append(int(sp_line[2][:-1]))
@@ -143,28 +168,71 @@ def plot_xy(x,y,min_x,ax):
 if __name__== '__main__':
     zhfont1 = matplotlib.font_manager.FontProperties(family='Hiragino Sans GB',
                                                      fname='/System/Library/Fonts/Hiragino Sans GB.ttc')
-    path = '/Users/dongzhejiang/Downloads/all_Log/resnet/cifar1010888.log'
-    model_result_1 = read_model_result(path)
-    path = '/Users/dongzhejiang/Downloads/all_Log/resnet/cifar1010887.log'
-    model_result_2 = read_model_result(path)
-    model_result = (model_result_1 + model_result_2) / 2
+
+    # 遍历所有数据
+    pid = []
+    sync = []
+    data_path = []
+    gpus = []
+    models = []
+    cpus = []
+    for root, dirs, files in os.walk('/Users/dongzhejiang/Downloads/Log_1'):
+        for file in files:
+            if file[0] == 'c':
+                pass
+            else:
+                continue
+            path = '/Users/dongzhejiang/Downloads/Log_1/' + file
+            with open(path) as f:
+                line = f.readline()
+            sp_line = line.split(' ')
+            pid.append(int(sp_line[2][:-1]))
+            if sp_line[4] == 'dist_async_device,':
+                sync.append(0)
+            else:
+                sync.append(1)
+            gpus.append(int(sp_line[8][0]))
+            models.append(sp_line[10][:-1])
+            cpus.append(int(sp_line[-1][0]))
+            data_path.append(path)
+    data = pd.DataFrame({'pid': pid, 'sync': sync, 'gpus': gpus, 'models': models, 'cpus': cpus, 'path': data_path})
+
     # 画accuracy图
-    fig, ax = plt.subplots()
-    min_time = model_result['timestamp'].min()
-    x = model_result['timestamp'] - min_time
-    y = model_result['test_acc']
-    plt.plot(x, y, label='GPU = 2')
-    plot_xy(x.max(), y.max(), 0, ax)
+    for model in ['resnet','mlp','cnn']:
+        fig, ax = plt.subplots()
+        # model = 'resnet'
+        temp_data=data[data['models']==model]
+        for tag in ['GPU = 0','GPU = 1','GPU = 2']:
+            if tag=='GPU = 0':
+                data_path=temp_data[temp_data['cpus']==1]['path']
+            elif tag=='GPU = 1':
+                data_path=temp_data[temp_data['gpus']==1]['path']
+            elif tag=='GPU = 2':
+                data_path=temp_data[temp_data['gpus']==2]['path']
+            if len(data_path)==0:
+                continue
+            path=data_path.iloc[0]
+            model_result_1 = read_model_result(path)
+            path=data_path.iloc[1]
+            model_result_2 = read_model_result(path)
+            model_result = (model_result_1 + model_result_2) / 2
+            min_time = model_result['timestamp'].min()
+            x = (model_result['timestamp'] - min_time)/60
+            y = model_result['test_acc']
+            plt.plot(x, y, label=tag)
+            plot_xy(x.max(), y.max(), 0, ax)
 
-    plt.ylabel('accuracy', fontsize=18)
-    plt.xlabel('time(s)', fontsize=18)
-    plt.tick_params(labelsize=18)
-    plt.title('resnet', fontproperties=zhfont1, fontsize=20)
-    plt.xlim([-5, 5000])
-    plt.ylim([0, 1])
-    plt.show()
+            # break
+        plt.ylabel('accuracy', fontsize=18)
+        plt.xlabel('time(min)', fontsize=18)
+        plt.tick_params(labelsize=18)
+        plt.title(model, fontproperties=zhfont1, fontsize=20)
+        plt.xlim(-0.5, )
+        plt.ylim([0, 1])
+        plt.legend(fontsize=12)
+        plt.show()
 
-    #画cpu箱线图
+    # 画cpu箱线图
     fig, ax = plt.subplots()
     cpu_boxplt=pd.DataFrame()
     path='/Users/dongzhejiang/Downloads/all_Log/resnet/pid10887.log'
@@ -181,7 +249,64 @@ if __name__== '__main__':
     plt.tick_params(labelsize=18)
     plt.show()
 
+    path='/Users/dongzhejiang/Downloads/Log_1/all_process.log'
+    cpus,gpus=read_resource(path)
+    for model in ['resnet','mlp','cnn']:
+        fig, ax = plt.subplots()
+        temp_data=data[data['models']==model]
+        cpu_boxplt = pd.DataFrame()
+        for tag in ['GPU = 0','GPU = 1','GPU = 2']:
+            if tag=='GPU = 0':
+                pid=temp_data[temp_data['cpus']==1]['pid']
+            elif tag=='GPU = 1':
+                pid=temp_data[temp_data['gpus']==1]['pid']
+            elif tag=='GPU = 2':
+                pid=temp_data[temp_data['gpus']==2]['pid']
+            if len(pid)==0:
+                continue
+            cpu=cpus[cpus['pid'].isin(pid)]
+            cpu['p_cpu_per'] = cpu['p_memo_perc'] / 4000
+            cpu_boxplt[tag] = cpu['p_cpu_per'].copy()
+
+        cpu_boxplt.boxplot()
+        plt.ylabel('cpu percent', fontsize=18)
+        plt.title(model, fontproperties=zhfont1, fontsize=20)
+        plt.tick_params(labelsize=18)
+        plt.show()
+
     #画gpu箱线图
+    for model in ['resnet', 'mlp', 'cnn']:
+        fig, ax = plt.subplots()
+        temp_data = data[data['models'] == model]
+        gpu_boxplot = pd.DataFrame()
+        for tag in ['GPU = 0', 'GPU = 1', 'GPU = 2']:
+            if tag == 'GPU = 1':
+                pid = temp_data[temp_data['gpus'] == 1]['pid']
+                if len(pid) == 0:
+                    continue
+                cpu = cpus[cpus['pid'].isin(pid)]
+                min_time = cpu['timestamp'].min()
+                max_time = cpu['timestamp'].max()
+                gpu = gpus[(gpus['timestamp'] <= max_time) & (gpus['timestamp'] >= min_time)]
+                gpu_boxplot['GPU = 1'] = gpu['gpu_3'].copy()
+            elif tag == 'GPU = 2':
+                pid = temp_data[temp_data['gpus'] == 2]['pid']
+                if len(pid) == 0:
+                    continue
+                cpu = cpus[cpus['pid'].isin(pid)]
+                min_time = cpu['timestamp'].min()
+                max_time = cpu['timestamp'].max()
+                gpu = gpus[(gpus['timestamp'] <= max_time) & (gpus['timestamp'] >= min_time)]
+                gpu_boxplot['GPU = 2 (1)'] = gpu['gpu_3'].copy()
+                gpu_boxplot['GPU = 2 (2)'] = gpu['gpu_4'].copy()
+        gpu_boxplot.boxplot()
+        plt.ylabel('gpu percent', fontsize=18)
+        plt.title(model, fontproperties=zhfont1, fontsize=20)
+        plt.tick_params(labelsize=18)
+        plt.show()
+
+
+
     fig, ax = plt.subplots()
     gpu_boxplot=pd.DataFrame()
     gpu=pd.concat([gpu_1,gpu_2])
@@ -194,87 +319,6 @@ if __name__== '__main__':
     plt.tick_params(labelsize=18)
     plt.show()
 
-    #遍历所有数据
-    for root, dirs, files in os.walk('/Users/dongzhejiang/Documents/work/UsersTags/hf_20170601'):
-        i = 0
-        for file in files:
-
-    path='/Users/dongzhejiang/Downloads/Log_1/all_process.log'
-    cpu_memory,gpu=read_resource(path)
-
-    # 画训练集句长
-    length1=count_length(train_path=r"./data1/train.txt")
-    length2 = count_length (train_path=r"./data2/train.txt")
-    length3 = count_length (train_path=r"./data3/train.txt")
-    plt.figure()
-    for length in [length1,length2,length3]:
-        length = pd.Series(length)
-        length.plot(kind='kde')
-    # hist, bin_edges = np.histogram(length1,bins=200)
-    # cdf = np.cumsum(hist / sum(hist))
-    # plt.plot(bin_edges[1:], cdf,label='data 1')
-    # hist, bin_edges = np.histogram(length2, bins=100)
-    # cdf = np.cumsum(hist / sum(hist))
-    # plt.plot(bin_edges[1:], cdf, label='data 2')
-    # hist, bin_edges = np.histogram(length3, bins=100)
-    # cdf = np.cumsum(hist / sum(hist))
-    # plt.plot(bin_edges[1:], cdf, label='data 3')
-    plt.xlim([-1,200])
-    plt.ylim([0, 0.06])
-    plt.grid()
-    label=['data 1','data 2','data 3']
-    plt.legend(label,fontsize=12)
-    plt.ylabel('Density',fontsize=18)
-    plt.xlabel('训练集句长', fontproperties=zhfont1, fontsize=18)
-    plt.title('密度分布函数图', fontproperties=zhfont1,fontsize=20)
-    plt.savefig('/Users/dongzhejiang/Downloads/word_length.png', dpi=300)
-    plt.show()
-
-    # 画三个model的f1
-    f1_1=pd.read_table('data1_save/1545714654/summaries/report.txt',header=None)
-    f1_2=pd.read_table('data2_save/1546036157/summaries/report.txt',header=None)
-    f1_3=pd.read_table('data3_save/1546046955/summaries/report.txt',header=None)
-    plt.figure()
-    plt.plot(f1_1[1],f1_1[2],label='model 1')
-    plt.plot(f1_2[1],f1_2[2], label='model 2')
-    plt.plot(f1_3[1],f1_3[2], label='model 3')
-    plt.ylabel('f1',fontsize=18)
-    plt.xlabel('epoch',fontsize=18)
-    plt.title('f1随epoch变化情况',fontproperties=zhfont1,fontsize=20)
-    plt.legend(fontsize=12)
-    plt.grid()
-    plt.xlim([0, 90])
-    plt.ylim([0, 0.9])
-    plt.savefig('/Users/dongzhejiang/Downloads/f1.png', dpi=300)
-    plt.show()
-
-    # 画model 3的accuracy变化情况
-    plt.figure()
-    plt.plot(f1_3[1], f1_3[3], label='model 3')
-    plt.ylabel('accuracy', fontsize=18)
-    plt.xlabel('epoch', fontsize=18)
-    plt.title('accuracy随epoch变化情况', fontproperties=zhfont1, fontsize=20)
-    plt.grid()
-    plt.xlim([0, 60])
-    plt.ylim([0, 1])
-    plt.savefig('/Users/dongzhejiang/Downloads/accuracy.png', dpi=300)
-    plt.show()
-
-    #获取时间间隔从而得到平均时间
-    from datetime import datetime
-    for f1 in [f1_1,f1_2,f1_3]:
-        start_time=datetime.strptime(f1.iloc[0][0],"%Y/%m/%d %H:%M:%S")
-        end_time=datetime.strptime(f1.iloc[len(f1)-1][0],"%Y/%m/%d %H:%M:%S")
-        dur=((end_time-start_time).seconds)/60./len(f1)
-        print(dur)
-
-    #获取f1
-    for f1 in [f1_1, f1_2, f1_3]:
-        print(f1.iloc[len(f1)-1][2])
-
-    #获取accuracy
-    for f1 in [f1_1, f1_2, f1_3]:
-        print(f1.iloc[len(f1)-1][3])
 
 # for pid in psutil.pids():
 #     p=psutil.Process(pid)
