@@ -47,7 +47,7 @@ while(1):
                                 (str)(psutil.virtual_memory().percent) + '%',str(pid),str(round(p.memory_percent()*100,1))+'%'))
 
                             _print('cpu percent: {} ,pid {} ,pid cpu percent: {}'.format(
-                                (str)(psutil.cpu_percent()) + '%',str(pid),(str)(p.cpu_percent()) + '%'))
+                                (str)(psutil.cpu_percent()) + '%',str(pid),(str)(p.cpu_percent(1)) + '%'))
         except:
             pass
     for i in range(8):
