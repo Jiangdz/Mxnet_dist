@@ -176,13 +176,13 @@ if __name__== '__main__':
     gpus = []
     models = []
     cpus = []
-    for root, dirs, files in os.walk('/Users/dongzhejiang/Downloads/Log_2'):
+    for root, dirs, files in os.walk('/Users/dongzhejiang/Documents/learning/云计算/图/Log_2'):
         for file in files:
             if file[0] == 'c':
                 pass
             else:
                 continue
-            path = '/Users/dongzhejiang/Downloads/Log_2/' + file
+            path = '/Users/dongzhejiang/Documents/learning/云计算/图/Log_2/' + file
             with open(path) as f:
                 line = f.readline()
             sp_line = line.split(' ')
@@ -630,7 +630,18 @@ if __name__== '__main__':
     #accuracy
     fig, ax = plt.subplots()
     model = 'cnn'
-    #异步
+    #同步
+    path = '/Users/dongzhejiang/Documents/learning/云计算/图/all_Log/cnn/cifar1038112.log'
+    model_result_1 = read_model_result_1(path)
+    path = '/Users/dongzhejiang/Documents/learning/云计算/图/all_Log/cnn/cifar1038114.log'
+    model_result_2 = read_model_result_1(path)
+    model_result = (model_result_1 + model_result_2) / 2
+    min_time = model_result['timestamp'].min()
+    x = (model_result['timestamp'] - min_time) / 60
+    y = model_result['test_acc']
+    plt.plot(x, y, label='sync')
+    plot_xy(x.max(), y.max(), 0, ax)
+    # 异步
     temp_data = data[data['models'] == model]
     data_path = temp_data[temp_data['sync'] == 0]['path']
     path = data_path.iloc[0]
@@ -642,17 +653,6 @@ if __name__== '__main__':
     x = (model_result['timestamp'] - min_time) / 60
     y = model_result['test_acc']
     plt.plot(x, y, label='async')
-    plot_xy(x.max(), y.max(), 0, ax)
-    #同步
-    path = '/Users/dongzhejiang/Downloads/all_Log/cnn/cifar1038112.log'
-    model_result_1 = read_model_result_1(path)
-    path = '/Users/dongzhejiang/Downloads/all_Log/cnn/cifar1038114.log'
-    model_result_2 = read_model_result_1(path)
-    model_result = (model_result_1 + model_result_2) / 2
-    min_time = model_result['timestamp'].min()
-    x = (model_result['timestamp'] - min_time) / 60
-    y = model_result['test_acc']
-    plt.plot(x, y, label='sync')
     plot_xy(x.max(), y.max(), 0, ax)
     plt.ylabel('accuracy', fontsize=12)
     plt.xlabel('time(min)', fontsize=12)
@@ -693,31 +693,32 @@ if __name__== '__main__':
     #gpu
     model = 'cnn'
     fig, ax = plt.subplots()
-    temp_data = data[data['models'] == model]
+    # temp_data = data[data['models'] == model]
     gpu_boxplot = pd.DataFrame()
-    #异步
-    pid = temp_data[temp_data['gpus'] == 2]['pid']
-    cpu = cpus[cpus['pid'].isin(pid)]
-    min_time = cpu['timestamp'].min()
-    max_time = cpu['timestamp'].max()
-    gpu = gpus[(gpus['timestamp'] <= max_time) & (gpus['timestamp'] >= min_time)]
-    gpu['async(1)'] = gpu['gpu_3'].copy()
-    gpu_boxplot = pd.concat([gpu_boxplot, gpu['async(1)']], axis=1)
-    gpu['async(2)'] = gpu['gpu_4'].copy()
-    gpu_boxplot = pd.concat([gpu_boxplot, gpu['async(2)']], axis=1)
     #同步
-    path = '/Users/dongzhejiang/Downloads/all_Log/cnn/pid38112.log'
-    cpu_1, gpu_1 = read_resource_1(path)
-    path = '/Users/dongzhejiang/Downloads/all_Log/cnn/pid38114.log'
-    cpu_2, gpu_2 = read_resource_1(path)
-    gpu = pd.concat([gpu_1, gpu_2], ignore_index=True)
-    gpu['sync(1)'] = gpu['gpu_1'].copy()
+    path = '/Users/dongzhejiang/PycharmProjects/my_mxnet/all_process_1546764850.log'
+    cpus, gpus = read_resource(path)
+    gpu=gpus.copy()
+    gpu['sync(1)'] = gpu['gpu_5'].copy()
+    gpu['sync(1)']=gpu['sync(1)']/100
     gpu_boxplot = pd.concat([gpu_boxplot, gpu['sync(1)']], axis=1)
-    gpu['sync(2)'] = gpu['gpu_2'].copy()
+    gpu['sync(2)'] = gpu['gpu_7'].copy()
+    gpu['sync(2)']=gpu['sync(2)']/100
     gpu_boxplot = pd.concat([gpu_boxplot, gpu['sync(2)']], axis=1)
+
+    #异步
+    path='/Users/dongzhejiang/PycharmProjects/my_mxnet/all_process_1546765782.log'
+    cpus, gpus = read_resource(path)
+    gpu = gpus.copy()
+    gpu['async(1)'] = gpu['gpu_6'].copy()
+    gpu['async(1)'] = gpu['async(1)'] / 100
+    gpu_boxplot = pd.concat([gpu_boxplot, gpu['async(1)']], axis=1)
+    gpu['async(2)'] = gpu['gpu_0'].copy()
+    gpu['async(2)'] = gpu['async(2)'] / 100
+    gpu_boxplot = pd.concat([gpu_boxplot, gpu['async(2)']], axis=1)
     gpu_boxplot.boxplot()
     plt.ylabel('gpu percent', fontsize=12)
-    plt.title(model, fontproperties=zhfont1, fontsize=20)
+    plt.title(model, fontsize=20)
     plt.tick_params(labelsize=12)
     plt.savefig('/Users/dongzhejiang/Downloads/sync_gpu.png', dpi=300)
     plt.show()

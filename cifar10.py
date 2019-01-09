@@ -73,6 +73,10 @@ _print('pid {}, dist {}, epochs {}, gpus_per_machine {}, model_name {}, gpu_i {}
 # Create a distributed key-value store
 store = kv.create(opt.dist) # Note: you can control the sync and async here (https://mxnet.incubator.apache.org/api/python/kvstore/kvstore.html)
 
+if store.rank==0:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1,2"
+else:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "3,4"
 
 # Clasify the images into one of the 10 digits
 num_outputs = 10
